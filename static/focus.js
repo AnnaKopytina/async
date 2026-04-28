@@ -1,6 +1,6 @@
 const API = {
     organizationList: "/orgsList",
-    analytics: "/api3/analytics",
+    analytics: "/api3/analitics", 
     orgReqs: "/api3/reqBase",
     buhForms: "/api3/buh",
 };
@@ -8,29 +8,37 @@ const API = {
 async function run() {
     try {
         const orgOgrns = await sendRequest(API.organizationList);
+        if (!orgOgrns) return;
+
         const ogrns = orgOgrns.join(",");
+        const [requisites, analytics, buh] = await Promise.all([
+            sendRequest(`${API.orgReqs}?ogrn=${ogrns}`),
+            sendRequest(`${API.analytics}?ogrn=${ogrns}`),
+            sendRequest(`${API.buhForms}?ogrn=${ogrns}`)
+        ]);
 
-        const requisites = await sendRequest(`${API.orgReqs}?ogrn=${ogrns}`);
+        if (!requisites || !analytics || !buh) {
+            return;
+        }
+        
         const orgsMap = reqsToMap(requisites);
-
-        const analytics = await sendRequest(`${API.analytics}?ogrn=${ogrns}`);
         addInOrgsMap(orgsMap, analytics, "analytics");
-
-        const buh = await sendRequest(`${API.buhForms}?ogrn=${ogrns}`);
         addInOrgsMap(orgsMap, buh, "buhForms");
+        
         render(orgsMap, orgOgrns);
     } catch (error) {
-        console.error("Ошибка при выполнении запросов:", error);
+        console.error("Произошла критическая ошибка:", error);
     }
 }
 
-run();
 
 async function sendRequest(url) {
     const response = await fetch(url);
     if (!response.ok) {
-        throw new Error(`Ошибка HTTP: ${response.status}`);
+        alert(`Ошибка: ${response.status} ${response.statusText}`);
+        return null;
     }
+
     return await response.json();
 }
 
